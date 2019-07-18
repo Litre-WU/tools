@@ -86,13 +86,13 @@ if __name__ == '__main__':
 		"age": "integer",
 		"data": "text"
 	}
-	# s.crete_table('test', 'test2', fields)
+	# s.crete_table('test', 'test', fields)
 	data = {
 		"name": "小明",
 		"age": "10",
 		"data": "测试"
 	}
-	# s.insert_into('test', 'test2', data)
+	# s.insert_into('test', 'test', data)
 	up_data = {
 		"SET": {
 			"name": "小名",
