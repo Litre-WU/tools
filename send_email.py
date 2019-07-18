@@ -1,7 +1,7 @@
 # coding=utf-8
 # 作者      : WU
 # 创建时间   : 2019/6/14
-# 文件名    : sendemail
+# 文件名    : send_email
 # IDE      : PyCharm
 import smtplib
 from email.mime.text import MIMEText
@@ -13,10 +13,10 @@ class Mail:
 	def __init__(self):
 		self.name = 'Ds'
 		self.sender = 'ds@checar.cn'
-		self.sender_pwd = 'Ds2233'
+		self.sender_pwd = '******'
 		self.users = {
 			"Ds": "ds@checar.cn",
-			# "魏杰斌": "kitbun@checar.cn",
+			"For-Ds": "for-ds@outlook.com",
 		}
 	
 	def mail(self, info):
