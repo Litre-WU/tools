@@ -52,8 +52,8 @@ class S2S:
 		self.close_db()
 	
 	def close_db(self):
-		self.db.commit()
 		self.cursor.close()
+		self.db.commit()
 		self.db.close()
 
 
