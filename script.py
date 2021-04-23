@@ -48,6 +48,6 @@ addons = [Joker()]
 
 if __name__ == '__main__':
     mydb = myclient["data"]
-    mycol = mydb["ynjzjgcx"]
-    rs = [x for x in mycol.find({"_id": "319fa651-4b2d-4f44-b432-a9b527dd7d2f"})]
+    mycol = mydb["test"]
+    rs = mycol.find_one({"_id": "319fa651-4b2d-4f44-b432-a9b527dd7d2f"})
     print(rs)
