@@ -16,7 +16,6 @@ class Server(BaseHTTPRequestHandler):
         self.wfile.write(self.rfile.readline())
 
     def do_GET(self):
-        params = parse_qs(urlparse(self.path).query)
         if self.path != '/':
             response = json.dumps({
                 "code": 404,
@@ -27,6 +26,9 @@ class Server(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(response.encode('utf-8'))
             return response
+        # 解析params
+        params = parse_qs(urlparse(self.path).query)
+
         html = '<title>验证码识别</title><body style="text-align:center"><h1>验证码识别</h1></body>'
         self.send_response(200)
         self.send_header('Content-type', 'text/html; charset=UTF-8')
