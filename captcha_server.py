@@ -5,7 +5,7 @@
 # File: captcha_server.py
 # Time: 5月 10, 2021
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import parse_qs
+from urllib.parse import urlparse, parse_qs
 import base64
 import muggle_ocr
 import json
@@ -16,6 +16,7 @@ class Server(BaseHTTPRequestHandler):
         self.wfile.write(self.rfile.readline())
 
     def do_GET(self):
+        params = parse_qs(urlparse(self.path).query)
         if self.path != '/':
             response = json.dumps({
                 "code": 404,
@@ -26,16 +27,14 @@ class Server(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(response.encode('utf-8'))
             return response
-        data = '<title>验证码识别</title><body style="text-align:center"><h1>验证码识别</h1></body>'
+        html = '<title>验证码识别</title><body style="text-align:center"><h1>验证码识别</h1></body>'
         self.send_response(200)
         self.send_header('Content-type', 'text/html; charset=UTF-8')
         self.end_headers()
-        self.wfile.write(data.encode())
-        return data
+        self.wfile.write(html.encode())
+        return html
 
     def do_POST(self):
-        # print(self.headers)
-        # print(self.command)
         if self.path != '/captcha':
             response = json.dumps({
                 "code": 404,
