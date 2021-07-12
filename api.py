@@ -9,6 +9,12 @@ from fastapi import FastAPI, Header, Cookie, Depends, BackgroundTasks, File, Upl
 from starlette.requests import Request
 from fastapi.responses import JSONResponse, ORJSONResponse, HTMLResponse
 from pydantic import BaseModel
+import io
+from json import load
+import torchvision
+import onnxruntime
+from PIL import Image
+import numpy as np
 import muggle_ocr
 import base64
 import os
@@ -19,6 +25,7 @@ from user_agent import generate_user_agent
 app = FastAPI()
 
 
+# 首页
 @app.get("/")
 async def index(request: Request, user_agent: Optional[str] = Header(None),
                 x_token: List[str] = Header(None)):
@@ -37,26 +44,50 @@ async def index(request: Request, user_agent: Optional[str] = Header(None),
     return JSONResponse(result)
 
 
-async def recognise(img_b64):
+# torchvision识别
+async def captcha_recognise(img_b64):
+    ort_session = onnxruntime.InferenceSession('common.onnx')
+    with open('charset.json', encoding='utf-8') as f:
+        charset = load(f)["charset"]
+    image = Image.open(io.BytesIO(base64.b64decode(img_b64)))
+    image = image.resize((int(image.size[0] * (64 / image.size[1])), 64), Image.ANTIALIAS).convert('L')
+    totensor = torchvision.transforms.ToTensor()
+    normalize = torchvision.transforms.Normalize((0.5), (0.5))
+    image = totensor(image)
+    image = normalize(image)
+    ort_inputs = {'input1': np.array([image.detach().cpu().numpy() if image.requires_grad else image.cpu().numpy()])}
+    ort_outs = ort_session.run(None, ort_inputs)
+    result = "".join([charset[x] for x in ort_outs[0][0] if x])
+    return result
+
+
+# muggle_ocr识别
+async def muggle_ocr_recognise(img_b64):
     sdk = muggle_ocr.SDK(model_type=muggle_ocr.ModelType.Captcha)
     text = sdk.predict(image_bytes=base64.b64decode(img_b64))
     # print(text)
     return text.strip()
 
 
+# 参数定义
 class VerifyCode(BaseModel):
     img_b64: Optional[str] = None
 
 
+# 验证码识别接口
 @app.post("/captcha")
 async def verify_code(item: VerifyCode, request: Request, user_agent: Optional[str] = Header(None),
                       x_token: List[str] = Header(None)):
     kwargs = item.dict()
     if not kwargs.get("img_b64", ""): return {"code": 400, "msg": "请传入正确的参数"}
-    text = await recognise(kwargs.get("img_b64", ""))
+    # torchvision识别
+    text = await muggle_ocr_recognise(kwargs.get("img_b64", ""))
+    # # muggle_ocr识别
+    # text = await muggle_ocr_recognise(kwargs.get("img_b64", ""))
     return JSONResponse({"code": 200, "msg": "OK", "result": text})
 
 
+# 照片信息上传
 @app.get("/photo")
 async def index(request: Request, response_class=HTMLResponse, user_agent: Optional[str] = Header(None),
                 x_token: List[str] = Header(None), ):
@@ -66,6 +97,7 @@ async def index(request: Request, response_class=HTMLResponse, user_agent: Optio
     return HTMLResponse(content=html)
 
 
+# 照片信息提取接口
 @app.post("/photo/upload/")
 async def upload_files(background_tasks: BackgroundTasks, files: List[UploadFile] = File(...)):
     for file in files:
