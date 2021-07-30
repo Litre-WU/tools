@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from lxml import etree
 import socket
 import threading
-from json import load, dump
+from json import load, dump, loads
 from time import sleep
 
 timeout = 10
@@ -49,14 +49,37 @@ def pub_req(**kwargs):
 
 
 def spider(**kwargs):
+    # 开心代理
+    page = kwargs.get("page", 1)
     kwargs = {
-        "url": f'http://www.kxdaili.com/dailiip/1/{kwargs.get("page", "1")}.html'
+        "url": f'http://www.kxdaili.com/dailiip/1/{page}.html'
     }
     html = pub_req(**kwargs)
     html = etree.HTML(html)
     trs = html.xpath('//table[@class="active"]/tbody/tr')
     if trs:
         return [tr.xpath('td/text()')[:2] for tr in trs]
+    # # jiangxianli
+    # kwargs = {
+    #     "url": 'https://ip.jiangxianli.com/api/proxy_ips',
+    #     "params": {"country": "中国",
+    #                "page": page}
+    # }
+    # text = pub_req(**kwargs)
+    # text = loads(text)
+    # data = text["data"]["data"]
+    # if data:
+    #     proxies = [[x["ip"], x["port"]] for x in data]
+    #     if page == 1:
+    #         pages = text["data"]["total"] // text["data"]["per_page"] + 1
+    #         with ThreadPoolExecutor(pages - 1) as executor:
+    #             futures = [executor.submit(get_ip, **{"page": i}) for i in
+    #                        range(2, pages + 1)]
+    #             for future in futures:
+    #                 if future.result():
+    #                     proxies += future.result()
+    #         return proxies
+    #     return proxies
 
 
 def check_ip(**kwargs):
