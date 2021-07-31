@@ -117,7 +117,9 @@ def run_spider():
 
 
 def get_proxy():
-    if not os.path.exists('proxy_list.json'): os.open('proxy_list.json', os.O_CREAT)
+    if not os.path.exists('proxy_list.json'):
+        with open('test.json', 'w') as f:
+            dump([], f)
     with open('proxy_list.json', 'r') as f:
         proxy_list = load(f)
     if proxy_list:
@@ -199,7 +201,7 @@ def switch(*args, **kwargs):
 
 def run():
     sever = socket.socket()
-    sever.bind(("127.0.0.1", 1080))
+    sever.bind(("0.0.0.0", 1080))
     sever.listen(10)
     print("1080 代理服务已启动!")
     while True:
