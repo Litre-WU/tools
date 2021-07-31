@@ -11,7 +11,7 @@ from lxml import etree
 import socket
 import threading
 from json import load, dump, loads
-from time import sleep
+from time import sleep, time
 import os
 
 timeout = 10
@@ -93,8 +93,8 @@ def check_ip(**kwargs):
     text = pub_req(**kwargs)
     if text:
         info = {"ip": ip, "port": port}
-        with open('proxy_list.txt', 'a') as f:
-            f.write(f'{str(info)}\n')
+        # with open('proxy_list.txt', 'a') as f:
+        #     f.write(f'{str(info)}\n')
         return info
 
 
@@ -186,7 +186,7 @@ def c2t(conn, to_px):
 
 def switch(*args, **kwargs):
     conn, addr = args
-    print(f'{addr[0]} 已连接 {kwargs.get("ip","")}:{kwargs.get("port","")}')
+    print(f'{addr[0]} 已连接 {kwargs.get("ip", "")}:{kwargs.get("port", "")}')
     try:
         to_px = socket.socket()
         to_px.connect((kwargs.get("ip", ""), int(kwargs.get("port", ""))))
@@ -199,19 +199,34 @@ def switch(*args, **kwargs):
         return switch(*args, **kwargs)
 
 
-def run():
-    sever = socket.socket()
-    sever.bind(("0.0.0.0", 1080))
-    sever.listen(10)
-    print("1080 代理服务已启动!")
+def main(**kwargs):
+    sever = kwargs.get("server", "")
+    switch_time = kwargs.get("switch_time", 30)
+    t1 = float(time())
     while True:
+        if float(time()) - t1 > switch_time:
+            break
         try:
             conn, addr = sever.accept()
-            kwargs = get_proxy()
             threading.Thread(target=switch, args=(conn, addr), kwargs=kwargs).start()
         except Exception as e:
             print("代理连接错误!")
+            break
+    proxy = get_proxy()
+    kwargs = kwargs | proxy
+    main(**kwargs)
+
+
+def run(**kwargs):
+    sever = socket.socket()
+    sever.bind((kwargs.get("host", "0.0.0.0"), kwargs.get("port", 1080)))
+    sever.listen(10)
+    print(f'{kwargs["host"]}:{kwargs["port"]} 代理服务已启动!')
+    kwargs = {"server": sever, "time": kwargs.get("time", 30)}
+    proxy = get_proxy()
+    kwargs = kwargs | proxy
+    main(**kwargs)
 
 
 if __name__ == "__main__":
-    run()
+    run(**{"host": "0.0.0.0", "port": 1080, "time": 30})
