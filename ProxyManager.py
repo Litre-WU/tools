@@ -12,6 +12,7 @@ import socket
 import threading
 from json import load, dump, loads
 from time import sleep
+import os
 
 timeout = 10
 none_time = 3
@@ -116,6 +117,7 @@ def run_spider():
 
 
 def get_proxy():
+    if not os.path.exists('proxy_list.json'): os.open('proxy_list.json', os.O_CREAT)
     with open('proxy_list.json', 'r') as f:
         proxy_list = load(f)
     if proxy_list:
