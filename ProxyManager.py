@@ -118,7 +118,7 @@ def run_spider():
 
 def get_proxy():
     if not os.path.exists('proxy_list.json'):
-        with open('test.json', 'w') as f:
+        with open('proxy_list.json', 'w') as f:
             dump([], f)
     with open('proxy_list.json', 'r') as f:
         proxy_list = load(f)
