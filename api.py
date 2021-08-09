@@ -4,6 +4,7 @@
 # Software: PyCharm
 # File: api.py
 # Time: 6月 05, 2021
+import asyncio
 from typing import Optional, List
 from fastapi import FastAPI, Header, Cookie, Depends, BackgroundTasks, File, UploadFile
 from starlette.requests import Request
@@ -21,6 +22,14 @@ import os
 import exifread
 from geopy.geocoders import Nominatim
 from user_agent import generate_user_agent
+import aiohttp
+from time import sleep
+from random import randint
+from lxml import etree
+
+# asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+semaphore = asyncio.Semaphore(10)
 
 app = FastAPI()
 
@@ -30,15 +39,15 @@ app = FastAPI()
 async def index(request: Request, user_agent: Optional[str] = Header(None),
                 x_token: List[str] = Header(None)):
     result = {
-        "code": 200,
-        "msg": "来了！老弟",
-        "result": "你看这个面它又长又宽，就像这个碗它又大又圆",
-        "info": {
-            "openapi_url": "/api/v1/openapi.json",
-            "ip": request.client.host,
-            "x-token": x_token,
-            "user-agent": user_agent,
-            "headers": dict(request.headers)
+        "Code": 200,
+        "Msg": "来了！老弟",
+        "Result": "你看这个面它又长又宽，就像这个碗它又大又圆",
+        "Info": {
+            "OpenApi_Url": "/api/v1/openapi.json",
+            "IP": request.client.host,
+            "X-Token": x_token,
+            "User-Agent": user_agent,
+            "Headers": dict(request.headers)
         }
     }
     return JSONResponse(result)
@@ -79,12 +88,12 @@ class VerifyCode(BaseModel):
 async def verify_code(item: VerifyCode, request: Request, user_agent: Optional[str] = Header(None),
                       x_token: List[str] = Header(None)):
     kwargs = item.dict()
-    if not kwargs.get("img_b64", ""): return {"code": 400, "msg": "请传入正确的参数"}
+    if not kwargs.get("img_b64", ""): return {"Code": 400, "Msg": "请传入正确的参数!"}
     # torchvision识别
     text = await muggle_ocr_recognise(kwargs.get("img_b64", ""))
     # # muggle_ocr识别
     # text = await muggle_ocr_recognise(kwargs.get("img_b64", ""))
-    return JSONResponse({"code": 200, "msg": "OK", "result": text})
+    return JSONResponse({"Code": 200, "Msg": "OK", "Result": text})
 
 
 # 照片信息上传
@@ -125,7 +134,85 @@ async def upload_files(background_tasks: BackgroundTasks, files: List[UploadFile
         return JSONResponse(data)
 
 
-if __name__ == '__main__':
-    import uvicorn
+# 公共请求函数
+async def pub_req(**kwargs):
+    method = kwargs.get("method", "GET")
+    url = kwargs.get("url", "")
+    params = kwargs.get("params", {})
+    data = kwargs.get("data", {})
+    headers = {**{"User-Agent": generate_user_agent()}, **kwargs.get("headers", {})}
+    proxy = kwargs.get("proxy", "")
+    timeout = kwargs.get("timeout", 20)
+    try:
+        # if await ip_test():
+        async with semaphore:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=3),
+                                             connector=aiohttp.TCPConnector(ssl=False),
+                                             trust_env=True) as client:
+                async with client.request(method=method, url=url, params=params, data=data, headers=headers,
+                                          proxy=proxy,
+                                          timeout=timeout) as rs:
+                    if rs.status == 200 or 201:
+                        content = await rs.read()
+                        return content
+                    else:
+                        sleep(randint(1, 2))
+                        retry = kwargs.get("retry", 0)
+                        retry += 1
+                        if retry >= 2:
+                            return None
+                        kwargs["retry"] = retry
+                        return await pub_req(**kwargs)
+    except Exception as e:
+        sleep(randint(1, 2))
+        retry = kwargs.get("retry", 0)
+        retry += 1
+        if retry >= 2:
+            return None
+        kwargs["retry"] = retry
+        return await pub_req(**kwargs)
 
-    uvicorn.run(app, host='0.0.0.0', port=8082)
+
+# 商业快讯
+@app.get("/business_news")
+async def business_news(request: Request, RankTime: Optional[str], response_model=JSONResponse):
+    meta = {
+        "method": "GET",
+        "url": "https://www.qcc.com/index_flashnewslist",
+        "params": {
+            "ajax": "true",
+            "lastRankIndex": RankTime,
+            "lastRankTime": RankTime
+        }
+    }
+    res = await pub_req(**meta)
+    html = etree.HTML(res.decode())
+    flnews_date = html.xpath('//div[@class="flnews-date"]/text()')
+    flnews_date = flnews_date[0] if flnews_date else ""
+    flnews = html.xpath('//div[@class="flnews-cell"]')
+    if flnews:
+        try:
+            data_list = [{
+                "时间": f'{flnews_date} {x.xpath("div/span[last()]/text()")[0]}' if x.xpath(
+                    "div/span[last()]/text()") else "",
+                "标题": x.xpath("div/div/div[@class='title']/a/text()")[0].strip() if x.xpath(
+                    "div/div/div[@class='title']/a/text()") else "",
+                "标签": x.xpath("div/div/div[@class='tag']/span/text()")[0].strip("#") if x.xpath(
+                    "div/div/div[@class='tag']/span/text()") else "",
+                "简述": x.xpath("div/div/div[@class='content']/text()")[0].strip() if x.xpath(
+                    "div/div/div[@class='content']/text()") else "",
+                "关键字": [{a.xpath('text()')[0]: a.xpath('@href')[0]} for a in x.xpath('div/div/div/a')] if x.xpath(
+                    'div/div/div/a') else []
+            } for x in flnews]
+            # print(data_list)
+            return {"Code": "200", "Msg": "OK", "Result": data_list}
+        except Exception as e:
+            print('business_news', e)
+            return {"Code": "501", "Msg": "Fail", "Result": []}
+
+
+if __name__ == '__main__':
+    # import uvicorn
+    # uvicorn.run(app, host='0.0.0.0', port=8082)
+    rs = asyncio.get_event_loop().run_until_complete(business_news(Request, RankTime=''))
+    print(rs)
