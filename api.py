@@ -91,7 +91,7 @@ async def verify_code(item: VerifyCode, request: Request, user_agent: Optional[s
     kwargs = item.dict()
     if not kwargs.get("img_b64", ""): return {"Code": 400, "Msg": "请传入正确的参数!"}
     # torchvision识别
-    text = await muggle_ocr_recognise(kwargs.get("img_b64", ""))
+    text = await captcha_recognise(kwargs.get("img_b64", ""))
     # # muggle_ocr识别
     # text = await muggle_ocr_recognise(kwargs.get("img_b64", ""))
     return JSONResponse({"Code": 200, "Msg": "OK", "Result": text})
