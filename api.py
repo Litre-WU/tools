@@ -26,6 +26,7 @@ import aiohttp
 from time import sleep
 from random import randint
 from lxml import etree
+from urllib.parse import urljoin
 
 # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
@@ -197,11 +198,12 @@ async def business_news(request: Request, RankTime: Optional[str], response_mode
                     "div/span[last()]/text()") else "",
                 "标题": x.xpath("div/div/div[@class='title']/a/text()")[0].strip() if x.xpath(
                     "div/div/div[@class='title']/a/text()") else "",
+                "链接": x.xpath("div/div/div[@class='title']/a/@href")[0].strip(),
                 "标签": x.xpath("div/div/div[@class='tag']/span/text()")[0].strip("#") if x.xpath(
                     "div/div/div[@class='tag']/span/text()") else "",
                 "简述": x.xpath("div/div/div[@class='content']/text()")[0].strip() if x.xpath(
                     "div/div/div[@class='content']/text()") else "",
-                "关键字": [{a.xpath('text()')[0]: a.xpath('@href')[0]} for a in x.xpath('div/div/div/a')] if x.xpath(
+                "关键字": [{a.xpath('text()')[0]: urljoin(meta["url"],a.xpath('@href')[0])} for a in x.xpath('div/div/div/div/a')] if x.xpath(
                     'div/div/div/a') else []
             } for x in flnews]
             # print(data_list)
