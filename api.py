@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse, ORJSONResponse, HTMLResponse
 from pydantic import BaseModel
 import io
 from json import load
-import torchvision
+# import torchvision
 import onnxruntime
 from PIL import Image
 import numpy as np
@@ -54,21 +54,32 @@ async def index(request: Request, user_agent: Optional[str] = Header(None),
     return JSONResponse(result)
 
 
-# torchvision识别
+# onnx
 async def captcha_recognise(img_b64):
     ort_session = onnxruntime.InferenceSession('common.onnx')
     with open('charset.json', encoding='utf-8') as f:
         charset = load(f)["charset"]
     image = Image.open(io.BytesIO(base64.b64decode(img_b64)))
     image = image.resize((int(image.size[0] * (64 / image.size[1])), 64), Image.ANTIALIAS).convert('L')
-    totensor = torchvision.transforms.ToTensor()
-    normalize = torchvision.transforms.Normalize((0.5), (0.5))
-    image = totensor(image)
-    image = normalize(image)
-    ort_inputs = {'input1': np.array([image.detach().cpu().numpy() if image.requires_grad else image.cpu().numpy()])}
+
+    # totensor = torchvision.transforms.ToTensor()
+    # normalize = torchvision.transforms.Normalize((0.5), (0.5))
+    # image = totensor(image)
+    # image = normalize(image)
+    # ort_inputs = {'input1': np.array([image.detach().cpu().numpy() if image.requires_grad else image.cpu().numpy()])}
+
+    image = np.array(image).astype(np.float32)
+    image = np.expand_dims(image, axis=0) / 255.
+    image = (image - 0.5) / 0.5
+    ort_inputs = {'input1': np.array([image])}
     ort_outs = ort_session.run(None, ort_inputs)
-    result = "".join([charset[x] for x in ort_outs[0][0] if x])
-    return result
+    result = []
+    last_item = 0
+    for item in ort_outs[0][0]:
+        if item and item != last_item:
+            last_item = item
+            result.append(charset[item])
+    return "".join(result)
 
 
 # muggle_ocr识别
@@ -90,7 +101,7 @@ async def verify_code(item: VerifyCode, request: Request, user_agent: Optional[s
                       x_token: List[str] = Header(None)):
     kwargs = item.dict()
     if not kwargs.get("img_b64", ""): return {"Code": 400, "Msg": "请传入正确的参数!"}
-    # torchvision识别
+    # onnx
     text = await captcha_recognise(kwargs.get("img_b64", ""))
     # # muggle_ocr识别
     # text = await muggle_ocr_recognise(kwargs.get("img_b64", ""))
