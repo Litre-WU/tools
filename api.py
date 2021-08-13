@@ -16,6 +16,7 @@ from json import load
 import onnxruntime
 from PIL import Image
 import numpy as np
+import paddlehub
 import muggle_ocr
 import base64
 import os
@@ -82,6 +83,13 @@ async def captcha_recognise(img_b64):
     return "".join(result)
 
 
+# PaddleOCR识别
+async def ocr_recognise(img_b64):
+    ocr = paddlehub.Module(name="chinese_ocr_db_crnn_mobile")
+    result_list = ocr.recognize_text(images=[np.array(Image.open(io.BytesIO(base64.b64decode(img_b64))))])
+    return result_list[0]["data"]
+
+
 # muggle_ocr识别
 async def muggle_ocr_recognise(img_b64):
     sdk = muggle_ocr.SDK(model_type=muggle_ocr.ModelType.Captcha)
@@ -96,16 +104,18 @@ class VerifyCode(BaseModel):
 
 
 # 验证码识别接口
-@app.post("/captcha")
-async def verify_code(item: VerifyCode, request: Request, user_agent: Optional[str] = Header(None),
+@app.post("/{path}")
+async def verify_code(item: VerifyCode, path: str, request: Request, user_agent: Optional[str] = Header(None),
                       x_token: List[str] = Header(None)):
     kwargs = item.dict()
     if not kwargs.get("img_b64", ""): return {"Code": 400, "Msg": "请传入正确的参数!"}
-    # onnx
-    text = await captcha_recognise(kwargs.get("img_b64", ""))
-    # # muggle_ocr识别
-    # text = await muggle_ocr_recognise(kwargs.get("img_b64", ""))
-    return JSONResponse({"Code": 200, "Msg": "OK", "Result": text})
+    path_dict = {
+        "ocr": ocr_recognise,
+        "captcha": captcha_recognise,
+        "captcha2": muggle_ocr_recognise
+    }
+    result = await path_dict[path](kwargs["img_b64"]) if path in path_dict else ""
+    return JSONResponse({"Code": 200, "Msg": "OK", "Result": result})
 
 
 # 照片信息上传
@@ -214,7 +224,8 @@ async def business_news(request: Request, RankTime: Optional[str], response_mode
                     "div/div/div[@class='tag']/span/text()") else "",
                 "简述": x.xpath("div/div/div[@class='content']/text()")[0].strip() if x.xpath(
                     "div/div/div[@class='content']/text()") else "",
-                "关键字": [{a.xpath('text()')[0]: urljoin(meta["url"],a.xpath('@href')[0])} for a in x.xpath('div/div/div/div/a')] if x.xpath(
+                "关键字": [{a.xpath('text()')[0]: urljoin(meta["url"], a.xpath('@href')[0])} for a in
+                        x.xpath('div/div/div/div/a')] if x.xpath(
                     'div/div/div/a') else []
             } for x in flnews]
             # print(data_list)
