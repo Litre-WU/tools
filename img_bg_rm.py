@@ -88,17 +88,26 @@ def img_rm_bg_api(**kwargs):
 # 筛选列表连续元素
 def list_filter_series(**kwargs):
     """
-    :param kwargs:{"list":[],offset:5}
+    :param kwargs:{"iter":iterable,offset:5}
     :return: []
     """
-    source_list = kwargs.get("list", "")
+    source_list = sorted(kwargs.get("iter", []))
     if not source_list: return []
     offset = kwargs.get("offset", 5)
     new_list = []
+
     for i, x in enumerate(source_list):
-        if x + offset in source_list or x - offset in source_list:
+        if i - offset >=0 and x-offset == source_list[i - offset]:
             new_list.append(x)
-    return new_list
+        elif i + offset <= len(source_list)-offset and x + offset == source_list[i + offset]:
+            new_list.append(x)
+
+    # for i, x in enumerate(source_list):
+    #     if x + offset in source_list or x - offset in source_list:
+    #         new_list.append(x)
+
+    return sorted(set(new_list))
+
 
 
 # 去背景
