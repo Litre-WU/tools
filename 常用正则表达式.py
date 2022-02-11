@@ -48,7 +48,7 @@ tel_pre_list = [188, 199]
 
 def search(txt):
     info = {
-        "contact": re.findall("[^\u4e00-\u9fa5]((?:[\u4e00-\u9fa5]+先生|[\u4e00-\u9fa5]+生|[\u4e00-\u9fa5]+女士|[\u4e00-\u9fa5]+总))[^\u4e00-\u9fa5]", txt),
+        "contact": re.findall("[^\u4e00-\u9fa5]((?:[\u4e00-\u9fa5]+先生|[\u4e00-\u9fa5]+生|[\u4e00-\u9fa5]+女士|[\u4e00-\u9fa5]+总|[\u4e00-\u9fa5]+经理))[^\u4e00-\u9fa5]", txt),
         "tel_list": re.findall('\D((?:1(?:[389]\d{9}|[57](?:[0-3]|[5-9])\d{8})|(?:\d{3}-\d{8}|\d{4}-\d{8}-\d{4}|\d{4}-\d{8}|\d{4}-\d{7})))\D', txt),
         "email_list": re.findall('[*#a-zA-Z0-9_.-]+@[a-zA-Z0-9-]+.[a-zA-Z0-9]+', txt)
     }
