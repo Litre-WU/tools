@@ -25,6 +25,26 @@ if platform == "win32":
     asyncio.set_event_loop(asyncio.ProactorEventLoop())
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
+ip = ".".join([str(randint(0, 255)) for _ in range(4)])
+
+headers = {
+        "X-Forwarded-For": ip,
+        "X-Forwarded": ip,
+        "Forwarded-For": ip,
+        "Forwarded": ip,
+        "X-Forwarded-Proto": ip,
+        "X-Forwarded-Host": ip,
+        "X-Requested-With": ip,
+        "X-Client-IP": ip,
+        "X-remote-IP": ip,
+        "X-remote-addr": ip,
+        "X-Real-IP": ip,
+        "True-Client-IP": ip,
+        "Client-IP": ip,
+        "X_FORWARDED_FOR": ip,
+        "X_REAL_IP": ip,
+        "User-Agent": generate_user_agent()
+    }
 
 # urllib
 async def url_req(**kwargs):
